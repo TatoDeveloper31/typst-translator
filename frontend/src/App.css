@@ -117,7 +117,8 @@ body {
 }
 
 .meta-grid,
-.logo-grid {
+.logo-grid,
+.typography-grid {
   display: grid;
   gap: 12px;
 }
@@ -128,6 +129,36 @@ body {
 
 .logo-grid {
   grid-template-columns: 1fr 1fr;
+}
+
+.typography-grid {
+  grid-template-columns: 1fr 1fr;
+}
+
+select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 8px 10px;
+  outline: none;
+  width: 100%;
+  cursor: pointer;
+
+  &:focus {
+    border-color: var(--accent);
+  }
+}
+
+.column-textareas {
+  display: grid;
+  gap: 12px;
+
+  &.cols-1 { grid-template-columns: 1fr; }
+  &.cols-2 { grid-template-columns: 1fr 1fr; }
+  &.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
 }
 
 label {
@@ -179,6 +210,79 @@ input[type="file"] {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.page-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.page-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+}
+
+.page-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.page-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.page-break-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+
+  &::before,
+  &::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+    border-top: 1px dashed var(--border);
+  }
+}
+
+.add-page-btn {
+  align-self: flex-start;
+  margin-top: 8px;
+  font-size: 0.8rem;
+}
+
+.subsection-block {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--surface2);
+  border-radius: 6px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-left: 12px;
+}
+
+.add-sub-btn {
+  align-self: flex-start;
+  margin-left: 12px;
+  font-size: 0.8rem;
+  padding: 6px 12px;
 }
 
 .section-block-header {

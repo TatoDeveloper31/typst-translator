@@ -1,14 +1,25 @@
-import base64
 from dataclasses import dataclass, field
-from pathlib import Path
+
+
+@dataclass
+class Page:
+    bodies: list[str]   # one str per column
+    columns: int = 1
+
+
+@dataclass
+class Subsection:
+    title: str
+    pages: list[Page] = field(default_factory=lambda: [Page(bodies=[""])])
+    image_path: str | None = None
 
 
 @dataclass
 class Section:
     title: str
-    body: str
-    columns: int = 1          # 1, 2, or 3
+    pages: list[Page] = field(default_factory=lambda: [Page(bodies=[""])])
     image_path: str | None = None
+    subsections: list[Subsection] = field(default_factory=list)
 
 
 @dataclass
@@ -19,13 +30,14 @@ class PortfolioData:
     seccion: str
     pec: str
     año: str
+    font_size: str = "12pt"
+    line_spacing: str = "1.5"
     sections: list[Section] = field(default_factory=list)
     logo_left_path: str | None = None
     logo_right_path: str | None = None
 
 
 def _escape(text: str) -> str:
-    """Escape characters that are special in Typst."""
     return (
         text.replace("\\", "\\\\")
             .replace("#", "\\#")
@@ -35,32 +47,53 @@ def _escape(text: str) -> str:
     )
 
 
-def _embed_image(path: str) -> str:
-    """Return a Typst image() call with base64-embedded data."""
-    data = Path(path).read_bytes()
-    b64 = base64.b64encode(data).decode()
-    suffix = Path(path).suffix.lstrip(".").lower()
-    fmt = "png" if suffix in ("png", "jpg", "jpeg", "webp", "gif") else suffix
-    return f'image.decode(bytes(base64.b64decode("{b64}"), encoding: "base64"), format: "{fmt}")'
-
-
 def _body_text(raw: str) -> str:
-    """Convert a plain-text section body into Typst paragraph blocks."""
     paragraphs = [p.strip() for p in raw.split("\n\n") if p.strip()]
     return "\n\n".join(_escape(p) for p in paragraphs)
+
+
+def _emit_page(lines: list[str], page: Page) -> None:
+    if not any(b.strip() for b in page.bodies):
+        return
+    if page.columns == 1:
+        lines += [_body_text(page.bodies[0]), ""]
+    else:
+        col_fracs = ", ".join(["1fr"] * page.columns)
+        lines.append(f"#grid(columns: ({col_fracs}), gutter: 1.5em,")
+        for body in page.bodies:
+            lines.append(f"  [{_body_text(body)}],")
+        lines += [")", ""]
+
+
+def _emit_pages(lines: list[str], pages: list[Page]) -> None:
+    for i, page in enumerate(pages):
+        if i > 0:
+            lines += ["#pagebreak()", ""]
+        _emit_page(lines, page)
+
+
+def _emit_image(lines: list[str], image_path: str) -> None:
+    lines += [
+        "#page(header: none)[",
+        "  #set align(center)",
+        f'  #figure(image("{image_path}", width: 100%))',
+        "]",
+        "",
+    ]
 
 
 def build_typst(data: PortfolioData) -> str:
     lines: list[str] = []
 
-    # ── Document-level settings ──────────────────────────────────────────────
+    leading = f"{float(data.line_spacing) * 0.75:.2f}em"
+    spacing = f"{float(data.line_spacing):.2f}em"
+
     lines += [
         f'#set document(title: "Portafolio de Matemáticas {_escape(data.año)}", author: "{_escape(data.nombre)}")',
-        '#set text(lang: "es", font: "Linux Libertine", size: 12pt)',
-        "#set par(justify: true, leading: 0.9em, spacing: 1.5em)",
+        f'#set text(lang: "es", font: "Linux Libertine", size: {data.font_size})',
+        f"#set par(justify: true, leading: {leading}, spacing: {spacing})",
         '#set heading(numbering: "1.1")',
         "",
-        # Header/footer for body pages
         '#set page(',
         '  paper: "a4",',
         '  margin: 2.5cm,',
@@ -81,11 +114,7 @@ def build_typst(data: PortfolioData) -> str:
     ]
 
     # ── Cover page ───────────────────────────────────────────────────────────
-    lines += [
-        "#page(header: none, footer: none)[",
-        "  #set align(center)",
-        "",
-    ]
+    lines += ["#page(header: none, footer: none)[", "  #set align(center)", ""]
 
     if data.logo_left_path and data.logo_right_path:
         lines += [
@@ -118,33 +147,23 @@ def build_typst(data: PortfolioData) -> str:
     ]
 
     # ── Table of contents ────────────────────────────────────────────────────
-    lines += [
-        "#page(header: none)[",
-        "  #outline(indent: 1em)",
-        "]",
-        "",
-    ]
+    lines += ["#page(header: none)[", "  #outline(indent: 1em)", "]", ""]
 
     # ── Body sections ────────────────────────────────────────────────────────
-    for section in data.sections:
-        lines.append(f"= {_escape(section.title)}")
-        lines.append("")
+    for i, section in enumerate(data.sections):
+        if i > 0:
+            lines += ["#pagebreak()", ""]
 
-        if section.body.strip():
-            body = _body_text(section.body)
-            if section.columns > 1:
-                lines += [f"#columns({section.columns})[", body, "]", ""]
-            else:
-                lines.append(body)
-                lines.append("")
+        lines += [f"= {_escape(section.title)}", ""]
+        _emit_pages(lines, section.pages)
 
         if section.image_path:
-            lines += [
-                "#page(header: none)[",
-                "  #set align(center)",
-                f'  #figure(image("{section.image_path}", width: 100%))',
-                "]",
-                "",
-            ]
+            _emit_image(lines, section.image_path)
+
+        for sub in section.subsections:
+            lines += [f"== {_escape(sub.title)}", ""]
+            _emit_pages(lines, sub.pages)
+            if sub.image_path:
+                _emit_image(lines, sub.image_path)
 
     return "\n".join(lines)
