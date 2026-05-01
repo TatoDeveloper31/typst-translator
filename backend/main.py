@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import translation
+from app.routers import translation, portfolio
 
 app = FastAPI(title="Typst Translator API")
 
@@ -12,6 +12,7 @@ app.add_middleware(
 )
 
 app.include_router(translation.router, prefix="/api")
+app.include_router(portfolio.router, prefix="/api")
 
 
 @app.get("/health")
