@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.venv
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+
+# Misc
+.DS_Store
+*.local
