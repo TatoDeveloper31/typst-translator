@@ -7,7 +7,8 @@ from pathlib import Path
 class Section:
     title: str
     body: str
-    image_path: str | None = None  # absolute path to a temp image file
+    columns: int = 1          # 1, 2, or 3
+    image_path: str | None = None
 
 
 @dataclass
@@ -130,8 +131,12 @@ def build_typst(data: PortfolioData) -> str:
         lines.append("")
 
         if section.body.strip():
-            lines.append(_body_text(section.body))
-            lines.append("")
+            body = _body_text(section.body)
+            if section.columns > 1:
+                lines += [f"#columns({section.columns})[", body, "]", ""]
+            else:
+                lines.append(body)
+                lines.append("")
 
         if section.image_path:
             lines += [

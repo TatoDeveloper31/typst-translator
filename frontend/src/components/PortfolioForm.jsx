@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
-import { compilePortfolio } from "../utils/portfolioApi";
+import { compilePortfolio, generateTyp } from "../utils/portfolioApi";
 
-const EMPTY_SECTION = () => ({ title: "", body: "", image: null });
+const EMPTY_SECTION = () => ({ title: "", body: "", columns: 1, image: null });
 
 const CURRENT_YEAR = new Date().getFullYear().toString();
 
@@ -39,6 +39,54 @@ export default function PortfolioForm() {
 
   const removeSection = (index) =>
     setSections((prev) => prev.filter((_, i) => i !== index));
+
+  const saveProgress = useCallback(() => {
+    const state = {
+      meta,
+      sections: sections.map(({ image, ...rest }) => rest), // images can't be serialized
+    };
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "portafolio-progreso.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [meta, sections]);
+
+  const downloadTyp = useCallback(async () => {
+    setError(null);
+    try {
+      const typst = await generateTyp({ meta, sections, logoLeft, logoRight });
+      const blob = new Blob([typst], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "portafolio.typ";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.message);
+    }
+  }, [meta, sections, logoLeft, logoRight]);
+
+  const loadProgress = useCallback((e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const state = JSON.parse(ev.target.result);
+        if (state.meta) setMeta(state.meta);
+        if (Array.isArray(state.sections))
+          setSections(state.sections.map((s) => ({ ...EMPTY_SECTION(), ...s, image: null })));
+      } catch {
+        setError("El archivo no es un progreso válido.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  }, []);
 
   const handleSubmit = useCallback(
     async (e) => {
@@ -152,6 +200,28 @@ export default function PortfolioForm() {
               />
             </label>
 
+            <div className="columns-selector">
+              <span>Columnas del contenido</span>
+              <div className="columns-btns">
+                {[1, 2, 3].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    className={`col-btn ${sec.columns === n ? "active" : ""}`}
+                    onClick={() =>
+                      setSections((prev) =>
+                        prev.map((s, idx) =>
+                          idx === i ? { ...s, columns: n } : s
+                        )
+                      )
+                    }
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <label>
               <span>Imagen (opcional — página de cuaderno)</span>
               <input
@@ -168,11 +238,25 @@ export default function PortfolioForm() {
         </button>
       </section>
 
-      {/* ── Submit ── */}
+      {/* ── Actions ── */}
       {error && <p className="form-error">{error}</p>}
-      <button type="submit" className="submit-btn" disabled={loading}>
-        {loading ? "Compilando PDF…" : "Descargar PDF"}
-      </button>
+      <div className="form-actions">
+        <button type="submit" className="submit-btn" disabled={loading}>
+          {loading ? "Compilando PDF…" : "Descargar PDF"}
+        </button>
+        <div className="secondary-actions">
+          <button type="button" className="add-btn" onClick={downloadTyp}>
+            Descargar .typ
+          </button>
+          <button type="button" className="add-btn" onClick={saveProgress}>
+            Guardar progreso (.json)
+          </button>
+          <label className="add-btn load-label">
+            Cargar progreso
+            <input type="file" accept=".json" onChange={loadProgress} hidden />
+          </label>
+        </div>
+      </div>
     </form>
   );
 }
